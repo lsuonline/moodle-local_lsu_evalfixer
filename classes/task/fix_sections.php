@@ -66,6 +66,7 @@ class fix_sections extends \core\task\scheduled_task {
     /** Read settings, find courses, then process their sections in order. */
     public function execute() {
         global $CFG, $DB;
+        $replacementurl = $CFG->wwwroot . '/local/lsu_evalfixer/redirect.php';
         require_once($CFG->dirroot . '/course/lib.php');
         require_once($CFG->dirroot . '/course/format/lib.php');
 
@@ -79,7 +80,7 @@ class fix_sections extends \core\task\scheduled_task {
         // Strip http:// or https:// from search if present.
         $this->search = preg_replace('#^https?://#i', '', $this->search);
 
-        $this->replacement = trim($config->replacementurl ?? '');
+        $this->replacement = $replacementurl;
         $this->name = trim($config->sectionname ?? '');
         $this->action = $config->action ?? 'replace';
         $this->dryrun = (bool)($config->dryrun ?? true);

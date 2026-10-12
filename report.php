@@ -41,7 +41,7 @@ $searchurl = trim($config->searchurl ?? '');
 $onlyempty = (bool)($config->onlyempty ?? true);
 $action = $config->action ?? 'replace';
 $sectionnamesearch = trim($config->sectionnamesearch ?? '');
-$replacementurl = trim($config->replacementurl ?? '');
+$replacementurl = $CFG->wwwroot . '/local/lsu_evalfixer/redirect.php';
 $sectionnameoverride = trim($config->sectionname ?? '');
 $emptyavailability = '{"op":"&","c":[],"showc":[]}';
 
