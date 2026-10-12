@@ -64,13 +64,16 @@ $PAGE->requires->data_for_js('redirectdata', [
     'delay' => $delay
 ]);
 $PAGE->requires->js_amd_inline("
-    require(['jquery'], function($) {
+    require([], function() {
         var data = redirectdata;
         var countdown = data.delay;
         var url = data.url;
         var timer = setInterval(function() {
             countdown--;
-            $('#redirect-countdown').text(countdown);
+            var countdownElement = document.getElementById('redirect-countdown');
+            if (countdownElement) {
+                countdownElement.textContent = countdown;
+            }
             if (countdown <= 0) {
                 clearInterval(timer);
                 window.location.href = url;
