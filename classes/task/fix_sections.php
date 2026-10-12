@@ -76,6 +76,9 @@ class fix_sections extends \core\task\scheduled_task {
             return;
         }
         $this->search = trim($config->searchurl ?? '');
+        // Strip http:// or https:// from search if present.
+        $this->search = preg_replace('#^https?://#i', '', $this->search);
+
         $this->replacement = trim($config->replacementurl ?? '');
         $this->name = trim($config->sectionname ?? '');
         $this->action = $config->action ?? 'replace';
@@ -139,14 +142,20 @@ class fix_sections extends \core\task\scheduled_task {
      * @throws \moodle_exception Before any course is modified.
      */
     private function validate_settings(): void {
-        foreach ([$this->search, $this->replacement] as $url) {
-            $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
-            if (!filter_var($url, FILTER_VALIDATE_URL) ||
-                    ($scheme !== 'http' && $scheme !== 'https') || preg_match('/[\x00-\x20<>"\']/', $url)) {
-                throw new \moodle_exception('invalidsettings', 'local_lsu_evalfixer', '',
-                    'Both URLs must be valid absolute HTTP(S) URLs.');
-            }
+        // Validate search URL (should not be empty, no spaces or special chars).
+        if ($this->search === '' || preg_match('/[\x00-\x20<>"\']/', $this->search)) {
+            throw new \moodle_exception('invalidsettings', 'local_lsu_evalfixer', '',
+                'Search URL must not be empty and cannot contain spaces or quotes.');
         }
+
+        // Validate replacement URL (must be valid absolute HTTP(S) URL).
+        $scheme = strtolower((string)parse_url($this->replacement, PHP_URL_SCHEME));
+        if (!filter_var($this->replacement, FILTER_VALIDATE_URL) ||
+                ($scheme !== 'http' && $scheme !== 'https') || preg_match('/[\x00-\x20<>"\']/', $this->replacement)) {
+            throw new \moodle_exception('invalidsettings', 'local_lsu_evalfixer', '',
+                'Replacement URL must be a valid absolute HTTP(S) URL.');
+        }
+
         if (strpos($this->replacement, $this->search) !== false) {
             throw new \moodle_exception('invalidsettings', 'local_lsu_evalfixer', '',
                 'Replacement URL must not equal or contain the search URL.');
@@ -179,8 +188,8 @@ class fix_sections extends \core\task\scheduled_task {
             foreach ($ids as $id) {
                 try {
                     $section = $DB->get_record('course_sections', ['id' => $id->id, 'course' => $courseid]);
-                    if (!$section || (strpos($section->summary, $this->search) === false &&
-                            strpos($section->summary, $this->htmlsearch) === false)) {
+                    if (!$section || (strpos($section->summary ?? '', $this->search) === false &&
+                            strpos($section->summary ?? '', $this->htmlsearch) === false)) {
                         continue;
                     }
 
@@ -194,10 +203,10 @@ class fix_sections extends \core\task\scheduled_task {
 
                     // Find all full URLs that will be replaced for logging purposes.
                     $foundurls = [];
-                    if (preg_match_all($this->regexpattern, $section->summary, $matches)) {
+                    if (preg_match_all($this->regexpattern, $section->summary ?? '', $matches)) {
                         $foundurls = array_merge($foundurls, $matches[0]);
                     }
-                    if (preg_match_all($this->htmlregexpattern, $section->summary, $matches)) {
+                    if (preg_match_all($this->htmlregexpattern, $section->summary ?? '', $matches)) {
                         $foundurls = array_merge($foundurls, $matches[0]);
                     }
                     $foundurls = array_unique($foundurls);
@@ -242,16 +251,16 @@ class fix_sections extends \core\task\scheduled_task {
 
                     // Update directly, or fall back here after a refused deletion. Re-read so the fallback never uses a pre-deletion snapshot.
                     $section = $DB->get_record('course_sections', ['id' => $id->id, 'course' => $courseid]);
-                    if (!$section || (strpos($section->summary, $this->search) === false &&
-                            strpos($section->summary, $this->htmlsearch) === false)) {
+                    if (!$section || (strpos($section->summary ?? '', $this->search) === false &&
+                            strpos($section->summary ?? '', $this->htmlsearch) === false)) {
                         continue;
                     }
 
                     $foundurls = [];
-                    if (preg_match_all($this->regexpattern, $section->summary, $matches)) {
+                    if (preg_match_all($this->regexpattern, $section->summary ?? '', $matches)) {
                         $foundurls = array_merge($foundurls, $matches[0]);
                     }
-                    if (preg_match_all($this->htmlregexpattern, $section->summary, $matches)) {
+                    if (preg_match_all($this->htmlregexpattern, $section->summary ?? '', $matches)) {
                         $foundurls = array_merge($foundurls, $matches[0]);
                     }
                     $foundurls = array_unique($foundurls);
@@ -263,7 +272,7 @@ class fix_sections extends \core\task\scheduled_task {
                     }
 
                     // Uses preg_replace to replace the full extracted URL with the new URL
-                    $summary = $section->summary;
+                    $summary = $section->summary ?? '';
                     $summary = preg_replace($this->regexpattern, $this->replacement, $summary);
                     $summary = preg_replace($this->htmlregexpattern, $this->htmlreplacement, $summary);
 
