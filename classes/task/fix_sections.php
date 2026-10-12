@@ -171,14 +171,15 @@ class fix_sections extends \core\task\scheduled_task {
                             strpos($section->summary, $this->htmlsearch) === false)) {
                         continue;
                     }
+
                     $namematches = true;
                     if ($this->sectionnamesearch !== '' && stripos($section->name ?? '', $this->sectionnamesearch) === false) {
                         $namematches = false;
                     }
-                    
+
                     $qualifies = $section->sequence === '' &&
                         ($section->availability === null || $section->availability === $this->emptyavailability);
-                    
+
                     $label = 'Course ' . $courseid . ', section ID ' . $section->id;
 
                     // A deletion attempt must pass every possible safeguard.
@@ -222,6 +223,7 @@ class fix_sections extends \core\task\scheduled_task {
                             strpos($section->summary, $this->htmlsearch) === false)) {
                         continue;
                     }
+
                     $namematches = true;
                     if ($this->sectionnamesearch !== '' && stripos($section->name ?? '', $this->sectionnamesearch) === false) {
                         $namematches = false;
@@ -229,7 +231,7 @@ class fix_sections extends \core\task\scheduled_task {
 
                     // Uses strtr to replace raw and HTML forms in one pass, not newly inserted text.
                     $summary = strtr($section->summary, $this->replacements);
-                    
+
                     $updatename = $namematches ? $this->name : $section->name;
 
                     if ($summary === $section->summary && $updatename === $section->name) {

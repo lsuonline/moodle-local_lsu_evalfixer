@@ -27,8 +27,13 @@ require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . '/course/lib.php');
 require_once($CFG->dirroot . '/course/format/lib.php');
 
+require_login();
+
 $context = context_system::instance();
 require_capability('moodle/site:config', $context);
+
+$PAGE->set_context($context);
+$PAGE->set_pagelayout('admin');
 
 $config = get_config('local_lsu_evalfixer');
 
@@ -47,7 +52,19 @@ $PAGE->set_heading(get_string('report_title', 'local_lsu_evalfixer'));
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('report_title', 'local_lsu_evalfixer'));
 
+// Add a loading spinner that will be hidden by JS once the table renders
+echo html_writer::div(
+    $OUTPUT->pix_icon('i/loading_small', '') . ' Loading data...',
+    'mt-3 mb-3',
+    ['id' => 'report-loading-spinner']
+);
+
+// Flush output so the browser can render the header and spinner immediately
+@ob_flush();
+@flush();
+
 if (empty($searchurl)) {
+    echo html_writer::script('document.getElementById("report-loading-spinner").style.display = "none";');
     echo $OUTPUT->notification('Search URL must be configured to run the report.');
     echo $OUTPUT->footer();
     exit;
@@ -91,47 +108,46 @@ foreach ($sections as $section) {
 
     $qualifies = $section->sequence === '' &&
         ($section->availability === null || $section->availability === $emptyavailability);
-    
+
     $args = new stdClass();
     $args->oldurl = format_string($searchurl);
     $args->newurl = format_string($replacementurl);
     $args->oldname = format_string($section->sectionname ?? '');
     $args->newname = format_string($sectionnameoverride);
-    
+
     if (!$namematches) {
         $proposedaction = get_string('action_update_url_only', 'local_lsu_evalfixer', $args);
     } else {
-        if ($onlyempty && !$qualifies) {
-            $proposedaction = get_string('action_skipped_empty', 'local_lsu_evalfixer');
-        } else {
-            $candelete = false;
-            if ($action === 'delete' && $qualifies && (int)$section->section > 0 &&
-                    empty($section->component) &&
-                    !$DB->record_exists('course_modules', ['section' => $section->id])) {
-                
-                if (!isset($courseformatcache[$section->course])) {
-                    $course = $DB->get_record('course', ['id' => $section->course], '*', MUST_EXIST);
-                    $courseformatcache[$section->course] = course_get_format($course);
-                }
-                $candelete = $courseformatcache[$section->course]->can_delete_section($section->section);
-            }
+        $candelete = false;
 
-            if ($candelete) {
-                $proposedaction = get_string('action_will_delete', 'local_lsu_evalfixer');
-            } else if ($action === 'delete') {
-                // Attempt to delete but it would be refused
-                $proposedaction = get_string('action_skipped_format_new', 'local_lsu_evalfixer', $args);
-            } else {
-                $proposedaction = get_string('action_update_url_name', 'local_lsu_evalfixer', $args);
+        if ($action === 'delete' && $qualifies && (int)$section->section > 0 &&
+                empty($section->component) &&
+                !$DB->record_exists('course_modules', ['section' => $section->id])) {
+
+            if (!isset($courseformatcache[$section->course])) {
+                $course = $DB->get_record('course', ['id' => $section->course], '*', MUST_EXIST);
+                $courseformatcache[$section->course] = course_get_format($course);
             }
+            $candelete = $courseformatcache[$section->course]->can_delete_section($section->section);
+        }
+
+        if ($candelete) {
+            $proposedaction = get_string('action_will_delete', 'local_lsu_evalfixer');
+        } else if ($action === 'delete' && (!$qualifies || (int)$section->section <= 0 || !empty($section->component) || $DB->record_exists('course_modules', ['section' => $section->id]))) {
+            $proposedaction = get_string('action_skipped_empty_new', 'local_lsu_evalfixer', $args);
+        } else if ($action === 'delete') {
+            // Attempt to delete but it would be refused
+            $proposedaction = get_string('action_skipped_format_new', 'local_lsu_evalfixer', $args);
+        } else {
+            $proposedaction = get_string('action_update_url_name', 'local_lsu_evalfixer', $args);
         }
     }
 
     $courselink = html_writer::link(new moodle_url('/course/view.php', ['id' => $section->course]), format_string($section->fullname));
-    
+
     // Some sections don't have a name, so display generic text linked to the section
     $sectionnametext = trim($section->sectionname ?? '') !== '' ? format_string($section->sectionname) : 'Section ' . $section->section;
-    $sectionlink = html_writer::link(new moodle_url('/course/section.php', ['id' => $section->id]), $sectionnametext);
+    $sectionlink = html_writer::link(new moodle_url('/course/view.php', ['id' => $section->course, 'sectionid' => $section->id]), $sectionnametext);
 
     $table->data[] = [
         $courselink,
@@ -139,6 +155,9 @@ foreach ($sections as $section) {
         $proposedaction
     ];
 }
+
+// Hide the spinner since data processing is done
+echo html_writer::script('document.getElementById("report-loading-spinner").style.display = "none";');
 
 if (empty($table->data)) {
     echo $OUTPUT->notification('No sections found matching the current settings.');

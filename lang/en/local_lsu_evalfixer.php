@@ -54,8 +54,12 @@ $string['report_section'] = 'Section';
 $string['report_action'] = 'Proposed Action';
 $string['action_will_delete'] = 'Will delete';
 $string['action_will_update'] = 'Will update URL and name';
+$string['action_update_url_only'] = 'Will update URL from {$a->oldurl} to {$a->newurl}';
+$string['action_update_url_name'] = 'Will update URL from {$a->oldurl} to {$a->newurl} and name from {$a->oldname} to {$a->newname}';
 $string['action_skipped_empty'] = 'Skipped (Does not meet empty/unrestricted requirement)';
+$string['action_skipped_empty_new'] = 'Will update URL from {$a->oldurl} to {$a->newurl} and name from {$a->oldname} to {$a->newname} (Does not meet empty/unrestricted requirement for deletion)';
 $string['action_skipped_format'] = 'Will update URL and name (Deletion refused by course format/restrictions)';
+$string['action_skipped_format_new'] = 'Will update URL from {$a->oldurl} to {$a->newurl} and name from {$a->oldname} to {$a->newname} (Deletion refused by course format/restrictions)';
 
 // Info.php strings.
 $string['evaltooldeprecated']       = 'The legacy course evaluation tool is no longer in use. It has been retired and replaced by a newer, more robust evaluation system.';
