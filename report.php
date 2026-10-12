@@ -72,6 +72,11 @@ if (empty($searchurl)) {
 
 $htmlsearch = htmlspecialchars($searchurl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
+$quotemeta = preg_quote($searchurl, '/');
+$regexpattern = '/https?:\/\/[^\s"\'<>]*' . $quotemeta . '[^\s"\'<>]*/i';
+$htmlquotemeta = preg_quote($htmlsearch, '/');
+$htmlregexpattern = '/https?:\/\/[^\s"\'<>]*' . $htmlquotemeta . '[^\s"\'<>]*/i';
+
 $matchsql = '(' . $DB->sql_like('cs.summary', ':rawurl', false) . ' OR ' .
     $DB->sql_like('cs.summary', ':htmlurl', false) . ')';
 $params = [
@@ -109,10 +114,20 @@ foreach ($sections as $section) {
     $qualifies = $section->sequence === '' &&
         ($section->availability === null || $section->availability === $emptyavailability);
 
+    $foundurls = [];
+    if (preg_match_all($regexpattern, $section->summary, $matches)) {
+        $foundurls = array_merge($foundurls, $matches[0]);
+    }
+    if (preg_match_all($htmlregexpattern, $section->summary, $matches)) {
+        $foundurls = array_merge($foundurls, $matches[0]);
+    }
+    $foundurls = array_unique($foundurls);
+    $urlstext = !empty($foundurls) ? implode(', ', $foundurls) : $searchurl;
+
     $args = new stdClass();
-    $args->oldurl = format_string($searchurl);
+    $args->oldurl = format_string($urlstext);
     $args->newurl = format_string($replacementurl);
-    $args->oldname = format_string($section->sectionname ?? '');
+    $args->oldname = format_string($section->sectionname ?? 'default');
     $args->newname = format_string($sectionnameoverride);
 
     if (!$namematches) {

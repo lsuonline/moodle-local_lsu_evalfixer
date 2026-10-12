@@ -49,6 +49,10 @@ class fix_sections extends \core\task\scheduled_task {
     private $htmlreplacement;
     /** @var array Raw and HTML replacement pairs used in a single pass. */
     private $replacements;
+    /** @var string Regex pattern used to match full URLs containing the search string. */
+    private $regexpattern;
+    /** @var string Regex pattern used to match HTML-encoded full URLs containing the search string. */
+    private $htmlregexpattern;
     /** @var int Errors in the current run. */
     private $errors = 0;
     /** @var int Successfully changed sections in the current run. */
@@ -85,6 +89,14 @@ class fix_sections extends \core\task\scheduled_task {
         $this->htmlsearch = htmlspecialchars($this->search, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $this->htmlreplacement = htmlspecialchars($this->replacement, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $this->replacements = [$this->search => $this->replacement, $this->htmlsearch => $this->htmlreplacement];
+
+        // Define regex patterns to capture full URLs around the search string.
+        // It captures anything that is not a space, quote, or HTML bracket.
+        $quotemeta = preg_quote($this->search, '/');
+        $this->regexpattern = '/https?:\/\/[^\s"\'<>]*' . $quotemeta . '[^\s"\'<>]*/i';
+        $htmlquotemeta = preg_quote($this->htmlsearch, '/');
+        $this->htmlregexpattern = '/https?:\/\/[^\s"\'<>]*' . $htmlquotemeta . '[^\s"\'<>]*/i';
+
         $matchsql = '(' . $DB->sql_like('summary', ':rawurl', true) . ' OR ' .
             $DB->sql_like('summary', ':htmlurl', true) . ')';
         $params = [
@@ -180,6 +192,17 @@ class fix_sections extends \core\task\scheduled_task {
                     $qualifies = $section->sequence === '' &&
                         ($section->availability === null || $section->availability === $this->emptyavailability);
 
+                    // Find all full URLs that will be replaced for logging purposes.
+                    $foundurls = [];
+                    if (preg_match_all($this->regexpattern, $section->summary, $matches)) {
+                        $foundurls = array_merge($foundurls, $matches[0]);
+                    }
+                    if (preg_match_all($this->htmlregexpattern, $section->summary, $matches)) {
+                        $foundurls = array_merge($foundurls, $matches[0]);
+                    }
+                    $foundurls = array_unique($foundurls);
+                    $urlstext = !empty($foundurls) ? implode(', ', $foundurls) : $this->search;
+
                     $label = 'Course ' . $courseid . ', section ID ' . $section->id;
 
                     // A deletion attempt must pass every possible safeguard.
@@ -194,9 +217,9 @@ class fix_sections extends \core\task\scheduled_task {
                         if ($candelete) {
                             mtrace($label . ': WOULD TRY NON-FORCED DELETE; UPDATE IF REFUSED.');
                         } else if ($namematches) {
-                            mtrace($label . ': WOULD UPDATE URL AND NAME.');
+                            mtrace($label . ': WOULD UPDATE URL from ' . $urlstext . ' to ' . $this->replacement . ' AND NAME from ' . ($section->name ?? 'default') . ' to ' . $this->name . '.');
                         } else {
-                            mtrace($label . ': WOULD UPDATE URL ONLY.');
+                            mtrace($label . ': WOULD UPDATE URL ONLY from ' . $urlstext . ' to ' . $this->replacement . '.');
                         }
                         continue;
                     }
@@ -224,13 +247,25 @@ class fix_sections extends \core\task\scheduled_task {
                         continue;
                     }
 
+                    $foundurls = [];
+                    if (preg_match_all($this->regexpattern, $section->summary, $matches)) {
+                        $foundurls = array_merge($foundurls, $matches[0]);
+                    }
+                    if (preg_match_all($this->htmlregexpattern, $section->summary, $matches)) {
+                        $foundurls = array_merge($foundurls, $matches[0]);
+                    }
+                    $foundurls = array_unique($foundurls);
+                    $urlstext = !empty($foundurls) ? implode(', ', $foundurls) : $this->search;
+
                     $namematches = true;
                     if ($this->sectionnamesearch !== '' && stripos($section->name ?? '', $this->sectionnamesearch) === false) {
                         $namematches = false;
                     }
 
-                    // Uses strtr to replace raw and HTML forms in one pass, not newly inserted text.
-                    $summary = strtr($section->summary, $this->replacements);
+                    // Uses preg_replace to replace the full extracted URL with the new URL
+                    $summary = $section->summary;
+                    $summary = preg_replace($this->regexpattern, $this->replacement, $summary);
+                    $summary = preg_replace($this->htmlregexpattern, $this->htmlreplacement, $summary);
 
                     $updatename = $namematches ? $this->name : $section->name;
 
@@ -241,9 +276,9 @@ class fix_sections extends \core\task\scheduled_task {
                     course_update_section($course, $section, ['summary' => $summary, 'name' => $updatename]);
                     $this->changed++;
                     if ($namematches) {
-                        mtrace($label . ': UPDATED URL AND NAME.');
+                        mtrace($label . ': UPDATED URL from ' . $urlstext . ' to ' . $this->replacement . ' AND NAME from ' . ($section->name ?? 'default') . ' to ' . $this->name . '.');
                     } else {
-                        mtrace($label . ': UPDATED URL ONLY.');
+                        mtrace($label . ': UPDATED URL ONLY from ' . $urlstext . ' to ' . $this->replacement . '.');
                     }
                 } catch (\Throwable $e) {
                     $this->errors++;
