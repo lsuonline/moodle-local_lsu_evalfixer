@@ -39,6 +39,8 @@ class fix_sections extends \core\task\scheduled_task {
     private $dryrun;
     /** @var bool Whether the exact empty-section filter limits all updates. */
     private $onlyempty;
+    /** @var string Section name search filter. */
+    private $sectionnamesearch;
     /** @var string Exact permitted non-NULL availability value. */
     private $emptyavailability = '{"op":"&","c":[],"showc":[]}';
     /** @var string Search URL as stored in HTML. */
@@ -75,6 +77,7 @@ class fix_sections extends \core\task\scheduled_task {
         $this->action = $config->action ?? 'replace';
         $this->dryrun = (bool)($config->dryrun ?? true);
         $this->onlyempty = (bool)($config->onlyempty ?? true);
+        $this->sectionnamesearch = trim($config->sectionnamesearch ?? '');
 
         $this->validate_settings();
 
@@ -168,16 +171,20 @@ class fix_sections extends \core\task\scheduled_task {
                             strpos($section->summary, $this->htmlsearch) === false)) {
                         continue;
                     }
+                    $namematches = true;
+                    if ($this->sectionnamesearch !== '' && stripos($section->name ?? '', $this->sectionnamesearch) === false) {
+                        $namematches = false;
+                    }
+                    
                     $qualifies = $section->sequence === '' &&
                         ($section->availability === null || $section->availability === $this->emptyavailability);
-                    if ($this->onlyempty && !$qualifies) {
-                        continue;
-                    }
+                    
                     $label = 'Course ' . $courseid . ', section ID ' . $section->id;
 
                     // A deletion attempt must pass every possible safeguard.
                     $candelete = false;
-                    if ($this->action === 'delete' && $qualifies && (int)$section->section > 0 &&
+                    // Deletion only happens if name matches AND qualifications are met.
+                    if ($namematches && $this->action === 'delete' && $qualifies && (int)$section->section > 0 &&
                             empty($section->component) &&
                             !$DB->record_exists('course_modules', ['section' => $section->id])) {
                         $candelete = course_get_format($course)->can_delete_section($section->section);
@@ -185,8 +192,10 @@ class fix_sections extends \core\task\scheduled_task {
                     if ($this->dryrun) {
                         if ($candelete) {
                             mtrace($label . ': WOULD TRY NON-FORCED DELETE; UPDATE IF REFUSED.');
-                        } else {
+                        } else if ($namematches) {
                             mtrace($label . ': WOULD UPDATE URL AND NAME.');
+                        } else {
+                            mtrace($label . ': WOULD UPDATE URL ONLY.');
                         }
                         continue;
                     }
@@ -213,20 +222,27 @@ class fix_sections extends \core\task\scheduled_task {
                             strpos($section->summary, $this->htmlsearch) === false)) {
                         continue;
                     }
-                    $qualifies = $section->sequence === '' &&
-                        ($section->availability === null || $section->availability === $this->emptyavailability);
-                    if ($this->onlyempty && !$qualifies) {
-                        continue;
+                    $namematches = true;
+                    if ($this->sectionnamesearch !== '' && stripos($section->name ?? '', $this->sectionnamesearch) === false) {
+                        $namematches = false;
                     }
+
                     // Uses strtr to replace raw and HTML forms in one pass, not newly inserted text.
                     $summary = strtr($section->summary, $this->replacements);
-                    if ($summary === $section->summary && $this->name === $section->name) {
+                    
+                    $updatename = $namematches ? $this->name : $section->name;
+
+                    if ($summary === $section->summary && $updatename === $section->name) {
                         continue;
                     }
                     rebuild_course_cache($courseid, true);
-                    course_update_section($course, $section, ['summary' => $summary, 'name' => $this->name]);
+                    course_update_section($course, $section, ['summary' => $summary, 'name' => $updatename]);
                     $this->changed++;
-                    mtrace($label . ': UPDATED URL AND NAME.');
+                    if ($namematches) {
+                        mtrace($label . ': UPDATED URL AND NAME.');
+                    } else {
+                        mtrace($label . ': UPDATED URL ONLY.');
+                    }
                 } catch (\Throwable $e) {
                     $this->errors++;
                     mtrace('Course ' . $courseid . ', section ID ' . $id->id . ': ERROR: ' . $e->getMessage());

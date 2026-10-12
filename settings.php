@@ -52,11 +52,22 @@ if ($hassiteconfig) {
             'local_lsu_evalfixer/onlyempty', get_string('onlyempty', 'local_lsu_evalfixer'),
             get_string('onlyempty_desc', 'local_lsu_evalfixer'), 1));
 
+        $settings->add(new admin_setting_configtext(
+            'local_lsu_evalfixer/sectionnamesearch', get_string('sectionnamesearch', 'local_lsu_evalfixer'),
+            get_string('sectionnamesearch_desc', 'local_lsu_evalfixer'), '', PARAM_TEXT));
+
         $settings->add(new admin_setting_configselect(
             'local_lsu_evalfixer/action', get_string('action', 'local_lsu_evalfixer'),
             get_string('action_desc', 'local_lsu_evalfixer'), 'replace', [
                 'replace' => get_string('replace', 'local_lsu_evalfixer'),
                 'delete' => get_string('delete', 'local_lsu_evalfixer'),
             ]));
+
+        $reporturl = new moodle_url('/local/lsu_evalfixer/report.php');
+        $settings->add(new admin_setting_heading(
+            'local_lsu_evalfixer/reportlink', 
+            get_string('reportlink_heading', 'local_lsu_evalfixer'),
+            get_string('reportlink_desc', 'local_lsu_evalfixer', $reporturl->out())
+        ));
     }
 }

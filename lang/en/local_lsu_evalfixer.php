@@ -35,7 +35,9 @@ $string['replacementurl_desc'] = 'Required in both modes. Absolute HTTP(S) URL t
 $string['sectionname'] = 'Section name override';
 $string['sectionname_desc'] = 'Required in both modes. Plain text, at most 255 characters. Applied to every matching section that is updated.';
 $string['onlyempty'] = 'Only target empty, unrestricted sections';
-$string['onlyempty_desc'] = 'Require sequence to be exactly empty and availability to be NULL or exactly {"op":"&","c":[],"showc":[]}. Other strings or equivalent JSON do not qualify. When enabled this limits all changes. Deletion always requires these conditions.';
+$string['onlyempty_desc'] = 'Require sequence to be exactly empty and availability to be NULL or exactly {"op":"&","c":[],"showc":[]}. Other strings or equivalent JSON do not qualify. When enabled this restricts deletion attempts. Deletion always requires these conditions.';
+$string['sectionnamesearch'] = 'Section name search filter';
+$string['sectionnamesearch_desc'] = 'If specified, only sections whose current name contains this text will be affected. Leave empty to evaluate all sections.';
 $string['action'] = 'Action';
 $string['action_desc'] = 'Deletion is never forced. If a targeted section cannot be deleted, update its URL and name instead. Sections outside the enabled filter are untouched.';
 $string['replace'] = 'Replace URL and rename';
@@ -44,6 +46,16 @@ $string['taskname'] = 'Fix LSU evaluation course sections';
 $string['privacy:metadata'] = 'This plugin stores only site configuration and no separate personal data.';
 $string['runfailed'] = 'Section maintenance encountered {$a} error(s). See the task log.';
 $string['invalidsettings'] = 'Invalid evaluation fixer settings: {$a}';
+$string['reportlink_heading'] = 'Evaluation Fixer Report';
+$string['reportlink_desc'] = '<a href="{$a}">View report of affected sections</a> (Based on currently saved settings)';
+$string['report_title'] = 'Evaluation Fixer Effect Report';
+$string['report_course'] = 'Course';
+$string['report_section'] = 'Section';
+$string['report_action'] = 'Proposed Action';
+$string['action_will_delete'] = 'Will delete';
+$string['action_will_update'] = 'Will update URL and name';
+$string['action_skipped_empty'] = 'Skipped (Does not meet empty/unrestricted requirement)';
+$string['action_skipped_format'] = 'Will update URL and name (Deletion refused by course format/restrictions)';
 
 // Info.php strings.
 $string['evaltooldeprecated']       = 'The legacy course evaluation tool is no longer in use. It has been retired and replaced by a newer, more robust evaluation system.';
