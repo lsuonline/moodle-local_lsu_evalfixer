@@ -32,6 +32,8 @@ $string['searchurl'] = 'URL to find';
 $string['searchurl_desc'] = 'Required absolute HTTP(S) URL. Case-sensitive literal substring. Enter the original URL, not HTML encoding. Normal HTML-escaped matches are also recognised.';
 $string['replacementurl'] = 'Replacement URL';
 $string['replacementurl_desc'] = 'Required in both modes. Absolute HTTP(S) URL that must not equal or contain the URL to find.';
+$string['redirectdelay'] = 'Redirect Delay';
+$string['redirectdelay_desc'] = 'Delay in seconds before redirecting. Maximum 15 seconds. Default 0.';
 $string['sectionname'] = 'Section name override';
 $string['sectionname_desc'] = 'Required in both modes. Plain text, at most 255 characters. Applied to every matching section that is updated.';
 $string['onlyempty'] = 'Only target empty, unrestricted sections';
@@ -61,9 +63,12 @@ $string['action_skipped_empty_new'] = 'Will update URL from "{$a->oldurl}" to "{
 $string['action_skipped_format'] = 'Will update URL and name (Deletion refused by course format/restrictions)';
 $string['action_skipped_format_new'] = 'Will update URL from "{$a->oldurl}" to "{$a->newurl}" and name from "{$a->oldname}" to "{$a->newname}" (Deletion refused by course format/restrictions)';
 
-// Info.php strings.
 $string['evaltooldeprecated']       = 'The legacy course evaluation tool is no longer in use. It has been retired and replaced by a newer, more robust evaluation system.';
 $string['newtool']                  = 'New Evaluation Tool';
 $string['newtoollink']              = 'Visit the new LSU Evaluation Tool';
 $string['newtoolurl']               = 'https://thenewcourseevaltool.com';
 $string['contactadmin']             = 'If you have questions, please contact your site administrator.';
+
+$string['missingreplacementurl']    = 'The site administrator has not set the replacement URL. Please contact them.';
+$string['redirectingtonewtool']     = 'You are being redirected to the new course evaluation tool at {$a}.';
+$string['redirecting_in']           = 'You will be redirected in <span id="redirect-countdown">{$a->time}</span> seconds. <br> Destination: <a href="{$a->url}">{$a->url}</a>';

@@ -45,6 +45,10 @@ if ($hassiteconfig) {
             get_string('replacementurl_desc', 'local_lsu_evalfixer'), '', PARAM_RAW_TRIMMED));
 
         $settings->add(new admin_setting_configtext(
+            'local_lsu_evalfixer/redirectdelay', get_string('redirectdelay', 'local_lsu_evalfixer'),
+            get_string('redirectdelay_desc', 'local_lsu_evalfixer'), 0, PARAM_INT));
+
+        $settings->add(new admin_setting_configtext(
             'local_lsu_evalfixer/sectionname', get_string('sectionname', 'local_lsu_evalfixer'),
             get_string('sectionname_desc', 'local_lsu_evalfixer'), '', PARAM_RAW_TRIMMED));
 
