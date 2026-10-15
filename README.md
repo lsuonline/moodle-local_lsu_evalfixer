@@ -20,19 +20,21 @@ No shell access is required for configuration or normal cron execution.
 | --- | --- | --- |
 | Enable scheduled processing | Off | Master switch; disabled means no processing |
 | Dry run | On | Log intended operations without writes or explicit cache clearing |
-| URL to find | Empty | Required absolute HTTP(S) URL |
-| Replacement URL | Empty | Required in both modes, including deletion fallback |
-| Section name override | Empty | Required plain text, maximum 255 characters |
-| Only target empty, unrestricted sections | On | Apply the exact filter below to all changes |
+| URL to find | Empty | Required absolute HTTP(S) URL. The protocol `http://` or `https://` is automatically stripped. |
+| Replacement URL | Empty | Required in both modes. The actual URL inserted into sections is an internal redirect link to `redirect.php`, which will redirect users to this destination. |
+| Redirect delay | 0 | Delay in seconds before redirecting the user from `redirect.php`. |
+| Section name override | Empty | Required plain text, maximum 255 characters. |
+| Only target empty, unrestricted sections | On | Currently limits only the *deletion* action. Updates are applied even to restricted/non-empty sections. |
+| Section name search | Empty | If set, a section's name is only replaced if its original name contains this string (case-insensitive). Otherwise, only the URL is replaced. |
 | Action | Replace URL and rename | Alternatively, try deletion and fall back to updating |
 
 Replacement must differ from the search URL and must not contain it for PAINFULLY obvious reasons. Blank replacements and name-only changes with identical URLs are not supported. Invalid settings fail the task before it changes data.
 
 ## Matching and scope
 
-Matching is a **case-sensitive literal substring** anywhere in the summary, including link attributes and visible text. All occurrences are replaced. It can match part of a longer URL; it does not parse hyperlinks or compare hosts. There are no regex matches, redirect checks or URL-normalisation rules.
+Matching finds occurrences of the configured search URL (with its `http://` or `https://` protocol automatically stripped). The task now uses a **regex pattern to capture and replace the entire containing HTTP(S) URL**, rather than just a literal substring replacement. This captures the entire URL surrounding the search string, ensuring no partial or broken URLs are left behind. There are no redirect checks or advanced URL-normalisation rules beyond stripping the protocol.
 
-Enter URLs with normal `&` characters. The task also recognises the normal HTML-escaped form using `&amp;`. It uses a single `strtr()` call to replace raw and HTML forms without replacing newly inserted text again. When raw and escaped search forms are identical, the replacement is HTML-escaped. This also means an ampersand may be stored as `&amp;` in a plain-text summary; the task does not branch on summary format. Other entity spellings, such as `&#38;`, are not normalised.
+Enter URLs with normal `&` characters. The task also recognises the normal HTML-escaped form using `&amp;`. It replaces the full captured URL with the internal redirect link without replacing newly inserted text again. This also means an ampersand may be stored as `&amp;` in a plain-text summary; the task does not branch on summary format. Other entity spellings, such as `&#38;`, are not normalised.
 
 The optional filter requires **both**:
 
@@ -80,6 +82,15 @@ One failed section does not prevent later sections from being processed. Errors 
 A Moodle lock prevents overlapping executions using this task's lock. It cannot prevent teacher edits, imports or unrelated plugins. The checks and core API calls are not a single atomic operation. Run live deletion during a controlled period with competing edits paused.
 
 For simplicity, the task loads candidate **course IDs** in one query, then loads section IDs for one course at a time and reads each summary separately. It does not load every matching summary at once. It is not paginated and has no saved checkpoint. The URL search scans summary text, so schedule off peak on large sites.
+
+## Report
+
+The plugin includes a **Report** page that previews the intended operations across all matching courses and sections based on the current configuration. You can access this via a link on the plugin's settings page. The report displays:
+- Course name and link
+- Section name and link
+- Proposed action (e.g. will delete, skip empty checks, update URL only, or update URL and rename)
+
+This allows administrators to preview the impact of running the task before actually modifying any data or disabling dry run mode.
 
 ## Schedule and logs
 
